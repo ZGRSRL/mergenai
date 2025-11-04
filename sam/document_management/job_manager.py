@@ -391,7 +391,7 @@ class JobManager:
             
             # Import here to avoid circular imports
             from autogen_orchestrator import run_full_analysis
-            from sam_collector import get_opportunity_details
+            from sam_document_access_v2 import get_opportunity_details
             from attachment_pipeline import process_document
             
             # Step 1: Get opportunity data

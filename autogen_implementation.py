@@ -56,33 +56,182 @@ class DocumentProcessingAgent:
         }
     
     def process_document(self, document: Document) -> Dict[str, Any]:
-        """Process document and extract structured data"""
+        """Process document and extract structured data, download and analyze actual documents"""
         
-        system_message = f"""
-        You are a document processing specialist. Your task is to analyze documents and extract structured information.
+        # Try to download and analyze actual documents
+        downloaded_documents = []
+        enhanced_content = document.content or ""
         
-        Document Type: {document.type.value}
-        Title: {document.title}
+        try:
+            from document_downloader import DocumentDownloader
+            from sam_gov_scraper import SAMGovScraper
+            
+            downloader = DocumentDownloader()
+            scraper = SAMGovScraper()
+            
+            # Look for document URLs in content
+            document_urls = self._extract_document_urls(document.content or "")
+            
+            # SAM.gov sayfasından belgeleri çek
+            opportunity_id = document.metadata.get('opportunity_id', '')
+            if opportunity_id and len(opportunity_id) == 32:  # UUID format
+                print(f"[DOC_PROCESSOR] SAM.gov sayfasından belgeler çekiliyor: {opportunity_id}")
+                sam_documents = scraper.scrape_opportunity_documents(opportunity_id)
+                
+                for sam_doc in sam_documents:
+                    downloaded_documents.append({
+                        'url': sam_doc.get('url', ''),
+                        'filename': sam_doc['filename'],
+                        'content_type': sam_doc['content_type'],
+                        'size': sam_doc['size'],
+                        'analysis': sam_doc['analysis'],
+                        'source': 'SAM.gov'
+                    })
+                    
+                    # Add document content to enhanced content
+                    enhanced_content += f"\n\n--- SAM.GOV BELGE: {sam_doc['filename']} ---\n"
+                    enhanced_content += sam_doc['analysis']['text_content'][:5000]  # First 5000 chars
+                    
+                    print(f"[DOC_PROCESSOR] SAM.gov belgesi analiz edildi: {sam_doc['filename']} ({sam_doc['analysis']['word_count']} kelime)")
+            
+            # Diğer URL'lerden belgeleri indir
+            for url in document_urls[:3]:  # Max 3 documents
+                try:
+                    print(f"[DOC_PROCESSOR] Belge indiriliyor: {url}")
+                    doc_result = downloader.download_document(url, document.id)
+                    
+                    if doc_result:
+                        downloaded_documents.append({
+                            'url': url,
+                            'filename': doc_result['filename'],
+                            'content_type': doc_result['content_type'],
+                            'size': doc_result['size'],
+                            'analysis': doc_result['analysis'],
+                            'source': 'URL'
+                        })
+                        
+                        # Add document content to enhanced content
+                        enhanced_content += f"\n\n--- URL BELGE: {doc_result['filename']} ---\n"
+                        enhanced_content += doc_result['analysis']['text_content'][:5000]  # First 5000 chars
+                        
+                        print(f"[DOC_PROCESSOR] Belge analiz edildi: {doc_result['filename']} ({doc_result['analysis']['word_count']} kelime)")
+                    
+                except Exception as e:
+                    print(f"[DOC_PROCESSOR] Belge indirme hatası: {e}")
+            
+            downloader.cleanup()
+            scraper.cleanup()
+            
+        except Exception as e:
+            print(f"[DOC_PROCESSOR] Document downloader hatası: {e}")
         
-        Extract the following information:
-        1. Key content and structure
-        2. Important dates and numbers
-        3. Requirements and specifications
-        4. Contact information
-        5. Financial information
+        # Extract key information from enhanced content
+        key_dates = self._extract_dates(enhanced_content)
+        requirements = self._extract_requirements(enhanced_content)
+        financial_info = self._extract_financial_info(enhanced_content)
         
-        Return a JSON structure with the extracted information.
-        """
-        
-        # This would integrate with actual LLM API
-        # For now, return mock data
         return {
             "document_id": document.id,
-            "extracted_content": document.content[:500],
-            "key_dates": ["2024-04-14", "2024-04-18"],
-            "requirements": [],
-            "metadata": document.metadata
+            "extracted_content": enhanced_content[:1000],  # First 1000 chars
+            "enhanced_content": enhanced_content,
+            "key_dates": key_dates,
+            "requirements": requirements,
+            "financial_info": financial_info,
+            "downloaded_documents": downloaded_documents,
+            "metadata": document.metadata,
+            "processing_stats": {
+                "original_length": len(document.content or ""),
+                "enhanced_length": len(enhanced_content),
+                "documents_downloaded": len(downloaded_documents),
+                "total_words": len(enhanced_content.split())
+            }
         }
+    
+    def _extract_document_urls(self, content):
+        """Extract document URLs from content"""
+        import re
+        
+        # Common document URL patterns
+        url_patterns = [
+            r'https?://[^\s]+\.pdf',
+            r'https?://[^\s]+\.docx?',
+            r'https?://[^\s]+\.xlsx?',
+            r'https?://api\.sam\.gov[^\s]*',
+            r'https?://[^\s]*sam\.gov[^\s]*',
+        ]
+        
+        urls = []
+        for pattern in url_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            urls.extend(matches)
+        
+        # Remove duplicates and return
+        return list(set(urls))
+    
+    def _extract_dates(self, content):
+        """Extract dates from content"""
+        import re
+        
+        date_patterns = [
+            r'\d{1,2}/\d{1,2}/\d{4}',
+            r'\d{4}-\d{2}-\d{2}',
+            r'\d{1,2}\s+\w+\s+\d{4}',
+            r'\w+\s+\d{1,2},?\s+\d{4}'
+        ]
+        
+        dates = []
+        for pattern in date_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            dates.extend(matches)
+        
+        return list(set(dates))
+    
+    def _extract_requirements(self, content):
+        """Extract requirements from content"""
+        import re
+        
+        # Look for requirement patterns
+        req_patterns = [
+            r'requirement[s]?\s*:?\s*([^\\n]+)',
+            r'shall\s+([^\\n]+)',
+            r'must\s+([^\\n]+)',
+            r'should\s+([^\\n]+)',
+            r'capability\s*:?\s*([^\\n]+)'
+        ]
+        
+        requirements = []
+        for pattern in req_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            requirements.extend([match.strip() for match in matches])
+        
+        return requirements[:10]  # Max 10 requirements
+    
+    def _extract_financial_info(self, content):
+        """Extract financial information from content"""
+        import re
+        
+        financial_info = {}
+        
+        # Look for dollar amounts
+        dollar_patterns = [
+            r'\$[\d,]+(?:\.\d{2})?',
+            r'USD\s*[\d,]+(?:\.\d{2})?',
+            r'budget\s*:?\s*\$?[\d,]+(?:\.\d{2})?',
+            r'cost\s*:?\s*\$?[\d,]+(?:\.\d{2})?'
+        ]
+        
+        amounts = []
+        for pattern in dollar_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            amounts.extend(matches)
+        
+        financial_info['amounts'] = list(set(amounts))
+        
+        # Look for contract terms
+        contract_terms = re.findall(r'contract\s+(?:term|period|duration)\s*:?\s*([^\\n]+)', content, re.IGNORECASE)
+        financial_info['contract_terms'] = contract_terms
+        
+        return financial_info
 
 class RequirementsExtractionAgent:
     """Agent responsible for extracting requirements from RFQ documents"""
@@ -164,7 +313,7 @@ class ComplianceAnalysisAgent:
         system_message = f"""
         You are a compliance analysis specialist. Analyze how well facility capabilities meet RFQ requirements.
         
-        Requirements: {[req.text for req in requirements]}
+        Requirements: {[getattr(req, 'text', str(req)) for req in requirements] if isinstance(requirements, list) else []}
         Facility Data: {facility_data}
         
         For each requirement:
@@ -220,7 +369,7 @@ class PricingSpecialistAgent:
         system_message = f"""
         You are a pricing specialist. Calculate pricing for the RFQ based on requirements and pricing data.
         
-        Requirements: {[req.text for req in requirements]}
+        Requirements: {[getattr(req, 'text', str(req)) for req in requirements] if isinstance(requirements, list) else []}
         Pricing Data: {pricing_data}
         
         Calculate:
@@ -267,6 +416,61 @@ class ProposalWriterAgent:
             "max_tokens": 4000
         }
     
+    def write_proposal(self, proposal_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Write complete proposal"""
+        
+        rfq_title = proposal_data.get('opportunity_title', 'Unknown RFQ')
+        requirements = proposal_data.get('requirements', [])
+        compliance = proposal_data.get('compliance', {})
+        pricing = proposal_data.get('pricing', {})
+        
+        # Mock proposal sections
+        executive_summary = f"""
+        Executive Summary for {rfq_title}
+        
+        We are pleased to submit our proposal for the above-referenced solicitation. 
+        Our team brings extensive experience in government contracting and meeting services.
+        
+        Key Highlights:
+        - {len(requirements)} requirements identified and addressed
+        - Competitive pricing at ${pricing.get('grand_total', 0):,.2f}
+        - Full compliance with all FAR requirements
+        - Experienced project management team
+        """
+        
+        technical_approach = f"""
+        Technical Approach
+        
+        Our approach focuses on delivering exceptional service while maintaining strict compliance:
+        
+        1. Project Management: Dedicated project manager with government contracting experience
+        2. Quality Assurance: Comprehensive QA processes aligned with government standards
+        3. Risk Management: Proactive identification and mitigation of potential issues
+        4. Compliance: Full adherence to all applicable FAR clauses and requirements
+        """
+        
+        pricing_section = f"""
+        Pricing Summary
+        
+        Total Project Cost: ${pricing.get('grand_total', 0):,.2f}
+        
+        Cost Breakdown:
+        - Labor: ${pricing.get('labor', {}).get('total', 0):,.2f}
+        - Materials: ${pricing.get('materials', {}).get('total', 0):,.2f}
+        - Management: ${pricing.get('management', {}).get('project_management', 0):,.2f}
+        
+        All pricing is competitive and compliant with government contracting requirements.
+        """
+        
+        return {
+            'executive_summary': executive_summary,
+            'technical_approach': technical_approach,
+            'pricing_section': pricing_section,
+            'compliance_matrix': compliance,
+            'total_cost': pricing.get('grand_total', 0),
+            'status': 'completed'
+        }
+    
     def write_executive_summary(self, rfq_title: str, compliance_matrix: ComplianceMatrix, pricing: Dict[str, Any]) -> str:
         """Write executive summary section"""
         
@@ -304,7 +508,7 @@ class ProposalWriterAgent:
         system_message = f"""
         You are a technical writing specialist. Write detailed technical approach sections for each requirement.
         
-        Requirements: {[req.text for req in requirements]}
+        Requirements: {[getattr(req, 'text', str(req)) for req in requirements] if isinstance(requirements, list) else []}
         Facility Data: {facility_data}
         
         For each requirement, write a technical approach that:
@@ -337,6 +541,58 @@ class QualityAssuranceAgent:
             "model": "gpt-4",
             "temperature": 0.1,
             "max_tokens": 4000
+        }
+    
+    def review_quality(self, proposal_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Review proposal quality and provide feedback"""
+        
+        # Mock quality review
+        quality_score = 85  # Out of 100
+        issues = []
+        recommendations = []
+        
+        # Check proposal completeness
+        if not proposal_result.get('executive_summary'):
+            issues.append("Executive summary missing")
+        else:
+            recommendations.append("Executive summary is well-structured")
+        
+        if not proposal_result.get('technical_approach'):
+            issues.append("Technical approach missing")
+        else:
+            recommendations.append("Technical approach is comprehensive")
+        
+        if not proposal_result.get('pricing_section'):
+            issues.append("Pricing section missing")
+        else:
+            recommendations.append("Pricing is clearly presented")
+        
+        # Check compliance
+        compliance_matrix = proposal_result.get('compliance_matrix', {})
+        if compliance_matrix.get('overall_risk') == 'high':
+            issues.append("High compliance risk identified")
+            recommendations.append("Address compliance gaps before submission")
+        
+        # Overall assessment
+        if quality_score >= 80:
+            approval_status = "Approved"
+            status_color = "green"
+        elif quality_score >= 60:
+            approval_status = "Conditional Approval"
+            status_color = "yellow"
+        else:
+            approval_status = "Needs Revision"
+            status_color = "red"
+        
+        return {
+            'quality_score': quality_score,
+            'approval_status': approval_status,
+            'status_color': status_color,
+            'issues': issues,
+            'recommendations': recommendations,
+            'review_summary': f"Proposal scored {quality_score}/100. {approval_status}.",
+            'total_issues': len(issues),
+            'total_recommendations': len(recommendations)
         }
     
     def review_proposal(self, proposal_sections: Dict[str, str], compliance_matrix: ComplianceMatrix) -> Dict[str, Any]:
@@ -373,7 +629,7 @@ class QualityAssuranceAgent:
             "approval_status": "approved"
         }
 
-class ZgrBidAutoGenOrchestrator:
+class ZgrSamAutoGenOrchestrator:
     """Main orchestrator for the AutoGen system"""
     
     def __init__(self):

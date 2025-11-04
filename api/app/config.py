@@ -9,9 +9,9 @@ class Settings(BaseSettings):
     env: str = "dev"
     
     # Database
-    postgres_user: str = "zgr"
-    postgres_password: str = "zgrpw"
-    postgres_db: str = "zgrbid"
+    postgres_user: str = "postgres"
+    postgres_password: str = "sarlio41"
+    postgres_db: str = "ZGR_AI"  # RAG servisi için ZGR_AI kullan
     postgres_port: int = 5432
     postgres_host: str = "db"
     
@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # Ignore extra fields from .env
 
 
 settings = Settings()

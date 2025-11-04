@@ -34,7 +34,7 @@ def migrate_sam_to_zgr_ai():
         'port': os.getenv('DB_PORT', '5432')
     }
     
-    print("🔄 SAM to ZGR_AI Database Migration")
+    print("[MIGRATION] SAM to ZGR_AI Database Migration")
     print("=" * 60)
     
     try:
@@ -42,19 +42,19 @@ def migrate_sam_to_zgr_ai():
         sam_conn = psycopg2.connect(**sam_params)
         zgr_ai_conn = psycopg2.connect(**zgr_ai_params)
         
-        print("✅ Database bağlantıları başarılı!")
+        print("[OK] Database baglantilari basarili!")
         
         with sam_conn.cursor(cursor_factory=RealDictCursor) as sam_cur, \
              zgr_ai_conn.cursor(cursor_factory=RealDictCursor) as zgr_cur:
             
             # 1. Enable extensions in ZGR_AI
-            print("\n🔧 Extensions etkinleştiriliyor...")
+            print("\n[STEP] Extensions etkinlestiriliyor...")
             zgr_cur.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
             zgr_ai_conn.commit()
-            print("✅ Extensions etkinleştirildi")
+            print("[OK] Extensions etkinlestirildi")
             
             # 2. Get all tables from SAM database
-            print("\n📋 SAM tabloları listeleniyor...")
+            print("\n[INFO] SAM tablolari listeleniyor...")
             sam_cur.execute("""
                 SELECT table_name 
                 FROM information_schema.tables 
@@ -63,9 +63,9 @@ def migrate_sam_to_zgr_ai():
             """)
             sam_tables = sam_cur.fetchall()
             
-            print(f"📊 SAM'de {len(sam_tables)} tablo bulundu:")
+            print(f"[INFO] SAM'de {len(sam_tables)} tablo bulundu:")
             for table in sam_tables:
-                print(f"  • {table['table_name']}")
+                print(f"  - {table['table_name']}")
             
             # 3. Copy table structures and data
             tables_to_copy = [
@@ -86,11 +86,11 @@ def migrate_sam_to_zgr_ai():
                 'sam_subcontracts'
             ]
             
-            print(f"\n🔄 {len(tables_to_copy)} tablo kopyalanıyor...")
+            print(f"\n[STEP] {len(tables_to_copy)} tablo kopyalaniyor...")
             
             for table_name in tables_to_copy:
                 try:
-                    print(f"\n📋 {table_name} tablosu işleniyor...")
+                    print(f"\n[TBL] {table_name} tablosu isleniyor...")
                     
                     # Check if table exists in SAM
                     sam_cur.execute("""
@@ -103,7 +103,7 @@ def migrate_sam_to_zgr_ai():
                     exists = sam_cur.fetchone()
                     
                     if not exists['exists']:
-                        print(f"  ⚠️ {table_name} SAM'de bulunamadı, atlanıyor")
+                        print(f"  [SKIP] {table_name} SAM'de bulunamadi, atlaniyor")
                         continue
                     
                     # Get table structure
@@ -116,7 +116,7 @@ def migrate_sam_to_zgr_ai():
                     columns = sam_cur.fetchall()
                     
                     if not columns:
-                        print(f"  ⚠️ {table_name} kolonları bulunamadı")
+                        print(f"  [WARN] {table_name} kolonlari bulunamadi")
                         continue
                     
                     # Create table in ZGR_AI
@@ -124,17 +124,37 @@ def migrate_sam_to_zgr_ai():
                     for col in columns:
                         nullable = "NULL" if col['is_nullable'] == "YES" else "NOT NULL"
                         default = f" DEFAULT {col['column_default']}" if col['column_default'] else ""
-                        column_definitions.append(f"{col['column_name']} {col['data_type']} {nullable}{default}")
+                        
+                        # Fix data types for PostgreSQL compatibility
+                        data_type = col['data_type'].upper()
+                        if 'ARRAY' in data_type:
+                            # Convert ARRAY to proper PostgreSQL array syntax
+                            base_type = data_type.replace('ARRAY', '').strip()
+                            if base_type == 'REAL' or base_type == 'DOUBLE PRECISION':
+                                data_type = 'REAL[]'
+                            elif base_type == 'INTEGER' or base_type == 'INT':
+                                data_type = 'INTEGER[]'
+                            elif base_type == 'TEXT' or base_type == 'VARCHAR':
+                                data_type = 'TEXT[]'
+                            else:
+                                data_type = 'TEXT[]'  # Default fallback
+                        
+                        column_definitions.append(f"{col['column_name']} {data_type} {nullable}{default}")
                     
                     create_table_sql = f"""
-                        DROP TABLE IF EXISTS {table_name};
+                        DROP TABLE IF EXISTS {table_name} CASCADE;
                         CREATE TABLE {table_name} (
                             {', '.join(column_definitions)}
                         );
                     """
                     
-                    zgr_cur.execute(create_table_sql)
-                    print(f"  ✅ {table_name} tablosu oluşturuldu")
+                    try:
+                        zgr_cur.execute(create_table_sql)
+                        zgr_ai_conn.commit()  # Commit after each table to avoid transaction issues
+                    except Exception as e:
+                        zgr_ai_conn.rollback()  # Rollback on error
+                        raise e
+                    print(f"  [OK] {table_name} tablosu olusturuldu")
                     
                     # Copy data
                     sam_cur.execute(f"SELECT COUNT(*) as count FROM {table_name};")
@@ -158,16 +178,16 @@ def migrate_sam_to_zgr_ai():
                                 insert_sql = f"INSERT INTO {table_name} ({', '.join(column_names)}) VALUES ({placeholders});"
                                 zgr_cur.execute(insert_sql, values)
                             
-                            print(f"  ✅ {count['count']} kayıt kopyalandı")
+                            print(f"  [OK] {count['count']} kayit kopyalandi")
                     else:
-                        print(f"  ℹ️ {table_name} tablosunda veri yok")
+                        print(f"  [INFO] {table_name} tablosunda veri yok")
                     
                 except Exception as e:
-                    print(f"  ❌ {table_name} hatası: {e}")
+                    print(f"  [ERROR] {table_name} hatasi: {e}")
                     continue
             
             # 4. Create additional ZGR_AI specific tables
-            print(f"\n🏗️ ZGR_AI özel tabloları oluşturuluyor...")
+            print(f"\n[STEP] ZGR_AI ozel tablolari olusturuluyor...")
             
             # AI Analysis Results table
             zgr_cur.execute("""
@@ -207,10 +227,10 @@ def migrate_sam_to_zgr_ai():
                 );
             """)
             
-            print("✅ ZGR_AI özel tabloları oluşturuldu")
+            print("[OK] ZGR_AI ozel tablolari olusturuldu")
             
             # 5. Create indexes
-            print(f"\n🔍 Index'ler oluşturuluyor...")
+            print(f"\n[STEP] Index'ler olusturuluyor...")
             
             indexes = [
                 "CREATE INDEX IF NOT EXISTS idx_opportunities_posted_date ON opportunities(posted_date);",
@@ -224,16 +244,16 @@ def migrate_sam_to_zgr_ai():
             for index_sql in indexes:
                 try:
                     zgr_cur.execute(index_sql)
-                    print(f"  ✅ Index oluşturuldu")
+                    print(f"  [OK] Index olusturuldu")
                 except Exception as e:
-                    print(f"  ⚠️ Index hatası: {e}")
+                    print(f"  [WARN] Index hatasi: {e}")
             
             # Commit all changes
             zgr_ai_conn.commit()
-            print("\n✅ Tüm değişiklikler kaydedildi!")
+            print("\n[OK] Tum degisiklikler kaydedildi!")
             
             # 6. Show final summary
-            print(f"\n📊 ZGR_AI Veritabanı Özeti:")
+            print(f"\n[SUMMARY] ZGR_AI Veritabani Ozeti:")
             print("-" * 40)
             
             zgr_cur.execute("""
@@ -244,21 +264,21 @@ def migrate_sam_to_zgr_ai():
             """)
             zgr_tables = zgr_cur.fetchall()
             
-            print(f"📋 Toplam {len(zgr_tables)} tablo:")
+            print(f"[INFO] Toplam {len(zgr_tables)} tablo:")
             for table in zgr_tables:
                 zgr_cur.execute(f"SELECT COUNT(*) as count FROM {table['table_name']};")
                 count = zgr_cur.fetchone()
-                print(f"  • {table['table_name']}: {count['count']} kayıt")
+                print(f"  - {table['table_name']}: {count['count']} kayit")
         
         # Close connections
         sam_conn.close()
         zgr_ai_conn.close()
         
-        print(f"\n🎉 SAM to ZGR_AI migration tamamlandı!")
-        print(f"📊 ZGR_AI veritabanı hazır!")
+        print(f"\n[SUCCESS] SAM to ZGR_AI migration tamamlandi!")
+        print(f"[INFO] ZGR_AI veritabani hazir!")
         
     except Exception as e:
-        print(f"❌ Migration hatası: {e}")
+        print(f"[ERROR] Migration hatasi: {e}")
         if 'sam_conn' in locals():
             sam_conn.close()
         if 'zgr_ai_conn' in locals():

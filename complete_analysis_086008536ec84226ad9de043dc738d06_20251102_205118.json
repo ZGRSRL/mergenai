@@ -1,0 +1,60 @@
+{
+  "notice_id": "086008536ec84226ad9de043dc738d06",
+  "url": "https://sam.gov/workspace/contract/opp/086008536ec84226ad9de043dc738d06/view",
+  "opportunity_info": {
+    "notice_id": "086008536ec84226ad9de043dc738d06",
+    "url": "https://sam.gov/workspace/contract/opp/086008536ec84226ad9de043dc738d06/view",
+    "title": "Military Base Conference and Accommodation Services",
+    "agency": "Department of Defense",
+    "naics_code": "721110",
+    "description": "Conference room and accommodation services for military base"
+  },
+  "analysis_timestamp": "2025-11-02T20:51:18.142573",
+  "rag_available": true,
+  "analysis_results": [
+    {
+      "title": "Conference Room Requirements",
+      "query": "conference room military base requirements specifications AV equipment capacity catering",
+      "proposal": "\nBu fırsat için conference room military base requirements specifications AV equipment capacity catering konusunda genel bilgiler:\n\n1. Konferans Salonu Gereksinimleri:\n   - AV ekipman: Projeksiyon, ses sistemi, video konferans\n   - Kapasite: Asgari 50-200 kişi\n   - Düzen: U-düzen, tiyatro, classroom setup\n   - Catering: Kahve molası, öğle yemeği servisi\n\n2. Askeri Üs Konaklama:\n   - Güvenlik izni gereklidir\n   - Üs yakınında konum avantajlıdır\n   - Government rate yapısı kullanılmalı\n   - 24/7 güvenlik ve erişim kontrolü\n\n3. Fiyatlandırma:\n   - GSA per diem rate'leri referans alınmalı\n   - Toplu rezervasyon indirimleri\n   - Uzun dönem kontrat avantajları\n",
+      "sources": 0,
+      "length": 663,
+      "method": "Fallback"
+    },
+    {
+      "title": "Military Accommodations",
+      "query": "military base hotel accommodations security clearance proximity government rates",
+      "proposal": "\nBu fırsat için military base hotel accommodations security clearance proximity government rates konusunda genel bilgiler:\n\n1. Konferans Salonu Gereksinimleri:\n   - AV ekipman: Projeksiyon, ses sistemi, video konferans\n   - Kapasite: Asgari 50-200 kişi\n   - Düzen: U-düzen, tiyatro, classroom setup\n   - Catering: Kahve molası, öğle yemeği servisi\n\n2. Askeri Üs Konaklama:\n   - Güvenlik izni gereklidir\n   - Üs yakınında konum avantajlıdır\n   - Government rate yapısı kullanılmalı\n   - 24/7 güvenlik ve erişim kontrolü\n\n3. Fiyatlandırma:\n   - GSA per diem rate'leri referans alınmalı\n   - Toplu rezervasyon indirimleri\n   - Uzun dönem kontrat avantajları\n",
+      "sources": 0,
+      "length": 655,
+      "method": "Fallback"
+    },
+    {
+      "title": "Government Pricing",
+      "query": "government hotel pricing per diem rates bulk discounts competitive benchmarks",
+      "proposal": "\nBu fırsat için government hotel pricing per diem rates bulk discounts competitive benchmarks konusunda genel bilgiler:\n\n1. Konferans Salonu Gereksinimleri:\n   - AV ekipman: Projeksiyon, ses sistemi, video konferans\n   - Kapasite: Asgari 50-200 kişi\n   - Düzen: U-düzen, tiyatro, classroom setup\n   - Catering: Kahve molası, öğle yemeği servisi\n\n2. Askeri Üs Konaklama:\n   - Güvenlik izni gereklidir\n   - Üs yakınında konum avantajlıdır\n   - Government rate yapısı kullanılmalı\n   - 24/7 güvenlik ve erişim kontrolü\n\n3. Fiyatlandırma:\n   - GSA per diem rate'leri referans alınmalı\n   - Toplu rezervasyon indirimleri\n   - Uzun dönem kontrat avantajları\n",
+      "sources": 0,
+      "length": 652,
+      "method": "Fallback"
+    },
+    {
+      "title": "Compliance Requirements",
+      "query": "FAR DFARS compliance SAM.gov registration requirements service level agreements",
+      "proposal": "\nBu fırsat için FAR DFARS compliance SAM.gov registration requirements service level agreements konusunda genel bilgiler:\n\n1. Konferans Salonu Gereksinimleri:\n   - AV ekipman: Projeksiyon, ses sistemi, video konferans\n   - Kapasite: Asgari 50-200 kişi\n   - Düzen: U-düzen, tiyatro, classroom setup\n   - Catering: Kahve molası, öğle yemeği servisi\n\n2. Askeri Üs Konaklama:\n   - Güvenlik izni gereklidir\n   - Üs yakınında konum avantajlıdır\n   - Government rate yapısı kullanılmalı\n   - 24/7 güvenlik ve erişim kontrolü\n\n3. Fiyatlandırma:\n   - GSA per diem rate'leri referans alınmalı\n   - Toplu rezervasyon indirimleri\n   - Uzun dönem kontrat avantajları\n",
+      "sources": 0,
+      "length": 654,
+      "method": "Fallback"
+    }
+  ],
+  "workflow_result": {
+    "status": "fallback",
+    "confidence": 0.5
+  },
+  "summary": {
+    "total_analyses": 4,
+    "rag_analyses": 0,
+    "fallback_analyses": 4,
+    "total_sources": 0,
+    "total_length": 2624,
+    "confidence": 0.5
+  }
+}

@@ -10,6 +10,9 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
+# Initialize logger first
+logger = logging.getLogger(__name__)
+
 # AutoGen imports (optional)
 try:
     from autogen import ConversableAgent, GroupChat, GroupChatManager
@@ -17,8 +20,6 @@ try:
 except ImportError:
     AUTOGEN_AVAILABLE = False
     logger.warning("AutoGen not available, using fallback analysis")
-
-logger = logging.getLogger(__name__)
 
 @dataclass
 class AnalysisResult:
@@ -34,11 +35,11 @@ class AnalysisResult:
     analysis_timestamp: str
     confidence: float
 
-class SAMOpportunityAgent:
+class SAMOpportunityAnalyzer:
     """Agent for fetching and preparing opportunity data"""
     
     def __init__(self):
-        self.name = "SAMOpportunityAgent"
+        self.name = "SAMOpportunityAnalyzer"
         self.agent = None
         
         if AUTOGEN_AVAILABLE:
@@ -59,7 +60,7 @@ Return data in JSON format with fields: title, description, deadline, requiremen
                     }
                 )
             except Exception as e:
-                logger.warning(f"SAMOpportunityAgent initialization failed: {e}")
+                logger.warning(f"SAMOpportunityAnalyzer initialization failed: {e}")
                 self.agent = None
     
     def fetch_opportunity_data(self, notice_id: str, opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -95,7 +96,7 @@ Return data in JSON format with fields: title, description, deadline, requiremen
                 return self._fallback_extraction(opportunity_data)
                 
         except Exception as e:
-            logger.error(f"SAMOpportunityAgent failed: {e}")
+            logger.error(f"SAMOpportunityAnalyzer failed: {e}")
             return self._fallback_extraction(opportunity_data)
     
     def _fallback_extraction(self, opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -428,10 +429,9 @@ class AutoGenOrchestrator:
     """Main orchestrator for multi-agent analysis"""
     
     def __init__(self):
-        self.sam_agent = SAMOpportunityAgent()
+        self.sam_agent = SAMOpportunityAnalyzer()
         self.doc_agent = DocumentAnalysisAgent()
-        self.ai_agent = AIAnalysisAgent()
-        self.summary_agent = SummaryAgent()
+        self.synthesis_agent = SynthesisAgent()
         
         logger.info("AutoGen Orchestrator initialized")
     

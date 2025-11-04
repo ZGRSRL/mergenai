@@ -1,0 +1,45 @@
+{
+  "notice_id": "086008536ec84226ad9de043dc738d06",
+  "success": true,
+  "metadata": {
+    "notice_id": "086008536ec84226ad9de043dc738d06",
+    "title": "Opportunity 086008536ec84226ad9de043dc738d06",
+    "url": "https://sam.gov/workspace/contract/opp/086008536ec84226ad9de043dc738d06/view"
+  },
+  "downloaded_files": [],
+  "extracted_requirements": {
+    "room_requirements": {},
+    "conference_requirements": {},
+    "av_requirements": {},
+    "catering_requirements": {},
+    "compliance_requirements": {},
+    "pricing_requirements": {},
+    "general_requirements": [
+      {
+        "source": "metadata",
+        "text": ""
+      }
+    ]
+  },
+  "sow_analysis": {
+    "period_of_performance": {},
+    "room_block": {},
+    "function_space": {},
+    "av": {},
+    "refreshments": {},
+    "location": {
+      "description": ""
+    },
+    "pre_con_meeting": {},
+    "tax_exemption": true,
+    "assumptions": [
+      {
+        "source": "workflow",
+        "text": "Requirements extracted from SAM.gov documents and metadata"
+      }
+    ]
+  },
+  "analysis_id": null,
+  "errors": [],
+  "timestamp": "2025-11-03T20:29:23.578812"
+}

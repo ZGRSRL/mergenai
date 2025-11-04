@@ -12,6 +12,10 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Database imports
 import psycopg2
@@ -42,14 +46,25 @@ class SAMDocumentAccessManager:
     """SAM.gov API v2 döküman erişim yöneticisi"""
     
     def __init__(self):
-        self.api_key = os.getenv('SAM_API_KEY')
+        # SAM.gov API Configuration
+        self.api_key = os.getenv('SAM_API_KEY') or os.getenv('SAM_PUBLIC_API_KEY')
+        self.secure_base_url = os.getenv('SAM_SECURE_BASE_URL', 'https://api.sam.gov/prod/sgs/v1')
+        self.secure_headers = self._parse_secure_headers()
+        
+        # Public API endpoints
         self.base_url = "https://api.sam.gov/opportunities/v2/search"
         self.description_base_url = "https://api.sam.gov/prod/opportunities/v1/noticedesc"
+        
+        # Session setup
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'SAM-Document-Access/1.0',
             'Accept': 'application/json'
         })
+        
+        # Add API key to session if available
+        if self.api_key and self.api_key != "your_public_api_key_here":
+            self.session.headers.update({'api_key': self.api_key})
         
         # Rate limiting - çok konservatif
         self.last_request_time = 0
@@ -61,14 +76,24 @@ class SAMDocumentAccessManager:
         
         logger.info("SAMDocumentAccessManager initialized")
     
+    def _parse_secure_headers(self) -> Dict[str, str]:
+        """Parse secure headers from environment variable"""
+        try:
+            headers_json = os.getenv('SAM_SECURE_HEADERS_JSON', '{}')
+            if headers_json and headers_json != '{"Authorization": "Bearer your_system_account_token", "Content-Type": "application/json"}':
+                return json.loads(headers_json)
+        except json.JSONDecodeError:
+            logger.warning("Invalid SAM_SECURE_HEADERS_JSON format")
+        return {}
+    
     def _connect_db(self):
         """Veritabanına bağlan"""
         try:
             self.db_conn = psycopg2.connect(
-                host='localhost',
-                database='sam',
-                user='postgres',
-                password='postgres'
+                host=os.getenv('DB_HOST', 'localhost'),
+                database=os.getenv('DB_NAME', 'sam'),
+                user=os.getenv('DB_USER', 'postgres'),
+                password=os.getenv('DB_PASSWORD', 'postgres')
             )
             logger.info("Database connected")
         except Exception as e:
@@ -87,6 +112,169 @@ class SAMDocumentAccessManager:
         
         self.last_request_time = time.time()
     
+    def get_opportunity_details(self, opportunity_id: str) -> Optional[Dict[str, Any]]:
+        """Get detailed opportunity information by ID"""
+        try:
+            logger.info(f"Fetching opportunity details for: {opportunity_id}")
+            
+            # First try to get from database
+            with self.db_conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT * FROM opportunities 
+                    WHERE opportunity_id = %s
+                """, (opportunity_id,))
+                result = cursor.fetchone()
+                
+                if result:
+                    logger.info(f"Found opportunity in database: {opportunity_id}")
+                    return dict(result)
+            
+            # If not in database, try to fetch from SAM API
+            logger.info(f"Opportunity not in database, fetching from SAM API: {opportunity_id}")
+            
+            # Check if we have a valid API key
+            if self.api_key and self.api_key not in ["your_public_api_key_here", "your_sam_api_key_here"]:
+                # Make real SAM API call
+                logger.info(f"Making real SAM API call for: {opportunity_id}")
+                api_data = self._fetch_opportunity_from_api(opportunity_id)
+                if api_data:
+                    # Cache the real data
+                    self._cache_opportunity_data(opportunity_id, api_data)
+                    return api_data
+                else:
+                    logger.warning(f"Real API call failed for: {opportunity_id}")
+            else:
+                logger.warning(f"No valid API key available for: {opportunity_id}")
+            
+            # No fallback - return None if API fails
+            logger.error(f"CRITICAL: No valid API key or API call failed for: {opportunity_id}")
+            logger.error(f"CRITICAL: This means the opportunity {opportunity_id} cannot be found in SAM.gov")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting opportunity details for {opportunity_id}: {e}")
+            return None
+
+    def _fetch_opportunity_from_api(self, opportunity_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch opportunity data from real SAM.gov API"""
+        try:
+            self._wait_for_rate_limit()
+            
+            # SAM.gov Public API endpoint for opportunity search
+            search_url = "https://api.sam.gov/opportunities/v2/search"
+            
+            # Search parameters - tarih limiti olmadan
+            params = {
+                'api_key': self.api_key,
+                'noticeId': opportunity_id,
+                'limit': 1
+            }
+            
+            logger.info(f"Making real SAM API call to: {search_url}")
+            response = self.session.get(search_url, params=params, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                opportunities = data.get('opportunitiesData', [])
+                
+                if opportunities:
+                    opp = opportunities[0]
+                    logger.info(f"✅ Real API data fetched for: {opportunity_id}")
+                    
+                    # Transform to expected format
+                    transformed_data = {
+                        'opportunityId': opp.get('noticeId', opportunity_id),
+                        'title': opp.get('title', ''),
+                        'description': opp.get('description', ''),
+                        'postedDate': opp.get('postedDate', ''),
+                        'naicsCode': opp.get('naicsCode', ''),
+                        'solicitationNumber': opp.get('solicitationNumber', ''),
+                        'agency': opp.get('fullParentPathName', ''),
+                        'responseDeadLine': opp.get('responseDeadLine', ''),
+                        'type': opp.get('type', ''),
+                        'status': opp.get('status', ''),
+                        'attachments': self._extract_attachments_from_api_data(opp)
+                    }
+                    
+                    return transformed_data
+                else:
+                    logger.warning(f"No opportunities found in API response for: {opportunity_id}")
+                    return None
+            else:
+                logger.error(f"SAM API error: {response.status_code} - {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error fetching from SAM API for {opportunity_id}: {e}")
+            return None
+
+    def _extract_attachments_from_api_data(self, opp_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract attachments from SAM API response data"""
+        attachments = []
+        
+        # Check for resourceLinks in the opportunity data
+        resource_links = opp_data.get('resourceLinks', [])
+        
+        for i, link in enumerate(resource_links):
+            if isinstance(link, dict):
+                attachment = {
+                    'filename': link.get('description', f'Attachment_{i+1}'),
+                    'description': link.get('description', ''),
+                    'url': link.get('url', ''),
+                    'type': self._get_file_type_from_url(link.get('url', ''))
+                }
+                attachments.append(attachment)
+            elif isinstance(link, str):
+                attachment = {
+                    'filename': f'Attachment_{i+1}',
+                    'description': f'Resource Link {i+1}',
+                    'url': link,
+                    'type': self._get_file_type_from_url(link)
+                }
+                attachments.append(attachment)
+        
+        return attachments
+
+    def _cache_opportunity_data(self, opportunity_id: str, data: Dict[str, Any]) -> bool:
+        """Cache opportunity data in database"""
+        try:
+            import json
+            data_json = json.dumps(data, default=str)
+            
+            with self.db_conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO opportunities (
+                        opportunity_id, title, description, posted_date, 
+                        naics_code, agency, 
+                        cached_data, cache_updated_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, NOW()
+                    )
+                    ON CONFLICT (opportunity_id) 
+                    DO UPDATE SET
+                        title = EXCLUDED.title,
+                        description = EXCLUDED.description,
+                        posted_date = EXCLUDED.posted_date,
+                        naics_code = EXCLUDED.naics_code,
+                        agency = EXCLUDED.agency,
+                        cached_data = EXCLUDED.cached_data,
+                        cache_updated_at = NOW()
+                """, (
+                    opportunity_id,
+                    data.get('title', ''),
+                    data.get('description', ''),
+                    data.get('postedDate'),
+                    data.get('naicsCode'),
+                    data.get('agency'),
+                    data_json
+                ))
+                self.db_conn.commit()
+                logger.info(f"Cached opportunity data for: {opportunity_id}")
+                return True
+        except Exception as e:
+            logger.error(f"Error caching opportunity data: {e}")
+            return False
+
     def get_opportunity_description(self, notice_id: str) -> OpportunityDescription:
         """Fırsat açıklamasını al (API v2 description URL ile)"""
         
@@ -254,8 +442,15 @@ class SAMDocumentAccessManager:
                 result = cur.fetchone()
                 
                 if result and result['point_of_contact']:
-                    point_of_contact = json.loads(result['point_of_contact'])
-                    return point_of_contact.get('description')
+                    # Check if it's already a dict or needs parsing
+                    point_of_contact = result['point_of_contact']
+                    if isinstance(point_of_contact, str):
+                        try:
+                            point_of_contact = json.loads(point_of_contact)
+                        except json.JSONDecodeError:
+                            logger.warning(f"Invalid JSON in point_of_contact: {point_of_contact}")
+                            return None
+                    return point_of_contact.get('description') if isinstance(point_of_contact, dict) else None
                 
                 return None
                 
@@ -277,8 +472,15 @@ class SAMDocumentAccessManager:
                 result = cur.fetchone()
                 
                 if result and result['point_of_contact']:
-                    point_of_contact = json.loads(result['point_of_contact'])
-                    return point_of_contact.get('resourceLinks', [])
+                    # Check if it's already a dict or needs parsing
+                    point_of_contact = result['point_of_contact']
+                    if isinstance(point_of_contact, str):
+                        try:
+                            point_of_contact = json.loads(point_of_contact)
+                        except json.JSONDecodeError:
+                            logger.warning(f"Invalid JSON in point_of_contact: {point_of_contact}")
+                            return []
+                    return point_of_contact.get('resourceLinks', []) if isinstance(point_of_contact, dict) else []
                 
                 return []
                 

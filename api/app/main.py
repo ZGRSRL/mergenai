@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .routes import health, ingest, compliance, pricing, proposal, search
+from .routes import health, ingest, compliance, proposal, search, rag
 
 app = FastAPI(
     title="ZgrBid API",
@@ -22,9 +22,9 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(ingest.router, prefix="/api/ingest", tags=["ingest"])
 app.include_router(compliance.router, prefix="/api/compliance", tags=["compliance"])
-app.include_router(pricing.router, prefix="/api/pricing", tags=["pricing"])
 app.include_router(proposal.router, prefix="/api/proposal", tags=["proposal"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
+app.include_router(rag.router, prefix="/api/rag", tags=["rag"])
 
 
 @app.get("/")

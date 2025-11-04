@@ -1,0 +1,149 @@
+[
+  {
+    "name": "Hotel Artesia",
+    "address": "203, North 2nd Street, Artesia, 88210",
+    "phone": "+1-575-746-2066,+1-888-746-2066",
+    "website": "https://hotelartesia.com/",
+    "lat": 32.843824,
+    "lon": -104.398213,
+    "distance_km": 0.5,
+    "match_score": 1.0,
+    "capacity_estimate": null,
+    "price_estimate": null,
+    "provenance": {
+      "source": "OSM",
+      "tags_present": [
+        "addr:city",
+        "addr:housenumber",
+        "addr:postcode",
+        "addr:street",
+        "internet_access",
+        "name",
+        "phone",
+        "tourism",
+        "website"
+      ]
+    },
+    "selected": true
+  },
+  {
+    "name": "Hardwick Hotel",
+    "address": "NM",
+    "phone": null,
+    "website": null,
+    "lat": 32.84249,
+    "lon": -104.3996785,
+    "distance_km": 0.34,
+    "match_score": 0.966,
+    "capacity_estimate": null,
+    "price_estimate": null,
+    "provenance": {
+      "source": "OSM",
+      "tags_present": [
+        "addr:state",
+        "ele",
+        "gnis:feature_id",
+        "name",
+        "tourism"
+      ]
+    },
+    "selected": true
+  },
+  {
+    "name": "Heritage Inn",
+    "address": null,
+    "phone": null,
+    "website": null,
+    "lat": 32.842057,
+    "lon": -104.399208,
+    "distance_km": 0.38,
+    "match_score": 0.962,
+    "capacity_estimate": null,
+    "price_estimate": null,
+    "provenance": {
+      "source": "OSM",
+      "tags_present": [
+        "name",
+        "tourism"
+      ]
+    },
+    "selected": true
+  },
+  {
+    "name": "La Quinta Inn & Suites Artesia",
+    "address": "2207, West Main Street, Artesia, NM, 88210",
+    "phone": "+1 575-736-2400",
+    "website": "https://www.wyndhamhotels.com/laquinta/artesia-new-mexico/la-quinta-artesia/overview",
+    "lat": 32.8419865,
+    "lon": -104.423983,
+    "distance_km": 1.93,
+    "match_score": 0.907,
+    "capacity_estimate": null,
+    "price_estimate": null,
+    "provenance": {
+      "source": "OSM",
+      "tags_present": [
+        "addr:city",
+        "addr:housenumber",
+        "addr:postcode",
+        "addr:state",
+        "addr:street",
+        "branch",
+        "brand",
+        "brand:wikidata",
+        "name",
+        "official_name"
+      ]
+    }
+  },
+  {
+    "name": "Comfort Inn & Suites",
+    "address": "115, North 26th Street, Artesia, NM, 88210",
+    "phone": "+1 575-308-5380",
+    "website": "https://www.choicehotels.com/new-mexico/artesia/comfort-inn-hotels",
+    "lat": 32.8437598,
+    "lon": -104.4303206,
+    "distance_km": 2.53,
+    "match_score": 0.847,
+    "capacity_estimate": null,
+    "price_estimate": null,
+    "provenance": {
+      "source": "OSM",
+      "tags_present": [
+        "addr:city",
+        "addr:housenumber",
+        "addr:postcode",
+        "addr:state",
+        "addr:street",
+        "brand",
+        "brand:wikidata",
+        "building",
+        "name",
+        "phone"
+      ]
+    }
+  },
+  {
+    "name": "Hampton Inn & Suites",
+    "address": null,
+    "phone": null,
+    "website": null,
+    "lat": 32.8446974,
+    "lon": -104.4284756,
+    "distance_km": 2.37,
+    "match_score": 0.763,
+    "capacity_estimate": null,
+    "price_estimate": null,
+    "provenance": {
+      "source": "OSM",
+      "tags_present": [
+        "brand",
+        "brand:wikidata",
+        "building",
+        "name",
+        "official_name",
+        "tourism"
+      ]
+    }
+  }
+]

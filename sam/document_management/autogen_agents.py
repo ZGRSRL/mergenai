@@ -4,8 +4,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()
 
-from sam_api import sam_api
-from document_processor import doc_processor
+from sam_document_access_v2 import SAMDocumentAccessManager
+from attachment_pipeline import AttachmentPipeline
 try:
     from database import db
 except Exception:
@@ -57,7 +57,7 @@ def initialize_autogen(**kwargs):
         print(f"AutoGen initialization failed: {e}")
         return None
 
-class SAMOpportunityAgent:
+class SAMOpportunityAnalyzer:
     def search_opportunities(self, keywords: list, days_back: int = 7):
         """SAM.gov'da fırsat ara"""
         try:
@@ -80,14 +80,14 @@ class SAMOpportunityAgent:
             logger.error(f"Search error: {e}")
             return {'success': False, 'error': str(e)}
 
-class AIAnalysisAgent:
-    """AI analiz agentı - fırsatları analiz eder ve öneriler üretir"""
+class SynthesisAgent:
+    """Synthesis agent - fırsatları analiz eder ve öneriler üretir"""
     
     def __init__(self):
         self.llm_config = self._get_llm_config()
         if AUTOGEN_AGENT_AVAILABLE:
             self.agent = AssistantAgent(
-                name="AIAnalyst",
+                name="SynthesisAgent",
                 llm_config=self.llm_config,
                 system_message="""Sen bir SAM.gov fırsat analiz uzmanısın. 
                 Fırsatları analiz eder, risk değerlendirmesi yapar ve öneriler üretirsin.
@@ -439,8 +439,8 @@ class DocumentAnalysisAgent:
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
-class SummaryAgent:
-    """Özet agentı - fırsatları özetler ve soru-cevap yapar"""
+class SynthesisAgent:
+    """Synthesis agent - fırsatları özetler ve soru-cevap yapar"""
     
     def __init__(self):
         pass
@@ -656,10 +656,9 @@ class CoordinatorAgent:
     """Koordinatör agent - diğer agentları yönetir"""
     
     def __init__(self):
-        self.analysis_agent = AIAnalysisAgent()
+        self.synthesis_agent = SynthesisAgent()
         self.proposal_agent = ProposalAgent()
         self.document_agent = DocumentAnalysisAgent()
-        self.summary_agent = SummaryAgent()
     
     def process_opportunity_complete(self, notice_id: str) -> dict:
         """Tam fırsat işleme süreci - düzeltilmiş"""
@@ -700,9 +699,9 @@ class CoordinatorAgent:
                     logger.error(f"Veritabanından veri alma hatası: {e}")
                     return {'success': False, 'error': f'Veri alma hatası: {e}'}
             
-            # 2. AI analizi yap
-            logger.info("AI analizi başlatılıyor...")
-            analysis_result = self.analysis_agent.analyze_opportunity(opportunity_data)
+            # 2. Synthesis analizi yap
+            logger.info("Synthesis analizi başlatılıyor...")
+            analysis_result = self.synthesis_agent.analyze_opportunity(opportunity_data)
             
             # 3. Dokümanları işle (düzeltilmiş)
             logger.info("Doküman işleme başlatılıyor...")

@@ -1,0 +1,138 @@
+{
+  "sow_requirements": [
+    {
+      "category": "Capacity",
+      "requirement": "General session capacity: 120",
+      "type": "mandatory",
+      "priority": "high"
+    },
+    {
+      "category": "Rooms",
+      "requirement": "Breakout rooms: 4",
+      "type": "mandatory",
+      "priority": "high"
+    },
+    {
+      "category": "Accommodation",
+      "requirement": "Rooms per night: 120",
+      "type": "mandatory",
+      "priority": "high"
+    },
+    {
+      "category": "AV Equipment",
+      "requirement": "Projector lumens: 5000",
+      "type": "technical",
+      "priority": "medium"
+    },
+    {
+      "category": "Legal",
+      "requirement": "Tax exemption compliance",
+      "type": "legal",
+      "priority": "high"
+    }
+  ],
+  "proposal_analysis": {
+    "text_length": 296,
+    "found_keywords": {
+      "capacity": [
+        "participants"
+      ],
+      "rooms": [
+        "room",
+        "breakout"
+      ],
+      "accommodation": [
+        "accommodation",
+        "rooms"
+      ],
+      "av": [
+        "projector",
+        "audio",
+        "visual",
+        "equipment",
+        "lumens"
+      ],
+      "legal": [
+        "tax",
+        "exemption"
+      ]
+    },
+    "coverage_score": 0.5714285714285714
+  },
+  "compliance_matrix": [
+    {
+      "requirement": "General session capacity: 120",
+      "category": "Capacity",
+      "type": "mandatory",
+      "priority": "high",
+      "is_covered": true,
+      "evidence": [
+        "participants"
+      ],
+      "confidence": 0.3333333333333333
+    },
+    {
+      "requirement": "Breakout rooms: 4",
+      "category": "Rooms",
+      "type": "mandatory",
+      "priority": "high",
+      "is_covered": true,
+      "evidence": [
+        "room",
+        "breakout"
+      ],
+      "confidence": 0.6666666666666666
+    },
+    {
+      "requirement": "Rooms per night: 120",
+      "category": "Accommodation",
+      "type": "mandatory",
+      "priority": "high",
+      "is_covered": true,
+      "evidence": [
+        "accommodation",
+        "rooms"
+      ],
+      "confidence": 0.6666666666666666
+    },
+    {
+      "requirement": "Projector lumens: 5000",
+      "category": "AV Equipment",
+      "type": "technical",
+      "priority": "medium",
+      "is_covered": false,
+      "evidence": [],
+      "confidence": 0.0
+    },
+    {
+      "requirement": "Tax exemption compliance",
+      "category": "Legal",
+      "type": "legal",
+      "priority": "high",
+      "is_covered": true,
+      "evidence": [
+        "tax",
+        "exemption"
+      ],
+      "confidence": 0.6666666666666666
+    }
+  ],
+  "gaps": [
+    {
+      "requirement": "General session capacity: 120",
+      "category": "Capacity",
+      "priority": "high",
+      "gap_type": "insufficient",
+      "recommendation": "Strengthen coverage of General session capacity: 120"
+    },
+    {
+      "requirement": "Projector lumens: 5000",
+      "category": "AV Equipment",
+      "priority": "medium",
+      "gap_type": "missing",
+      "recommendation": "Add section covering Projector lumens: 5000"
+    }
+  ],
+  "compliance_score": 50.0,
+  "analysis_date": "2025-10-18T19:00:24.430847"
+}

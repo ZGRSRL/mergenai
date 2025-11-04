@@ -1,0 +1,42 @@
+{
+  "av": {
+    "adapters": [
+      "HDMI",
+      "DisplayPort",
+      "DVI",
+      "VGA"
+    ],
+    "power_strips_min": 10,
+    "projector_lumens": 5000
+  },
+  "room_block": {
+    "nights": 4,
+    "attrition_policy": "no_penalty_below_120",
+    "total_rooms_per_night": 120
+  },
+  "refreshments": {
+    "menu": [
+      "water",
+      "coffee",
+      "tea",
+      "snacks"
+    ],
+    "frequency": "AM/PM_daily"
+  },
+  "tax_exemption": true,
+  "function_space": {
+    "breakout_rooms": {
+      "count": 4,
+      "setup": "classroom",
+      "capacity_each": 30
+    },
+    "general_session": {
+      "setup": "classroom",
+      "screens": "6x10",
+      "capacity": 120,
+      "projectors": 2
+    }
+  },
+  "setup_deadline": "2025-02-24T18:00:00Z",
+  "period_of_performance": "2025-02-25 to 2025-02-27"
+}

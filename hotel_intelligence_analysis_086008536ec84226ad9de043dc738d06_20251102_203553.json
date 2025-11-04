@@ -1,0 +1,29 @@
+{
+  "notice_id": "086008536ec84226ad9de043dc738d06",
+  "url": "https://sam.gov/workspace/contract/opp/086008536ec84226ad9de043dc738d06/view",
+  "opportunity_info": {
+    "agency": "Department of Defense"
+  },
+  "analysis_timestamp": "2025-11-02T20:35:53.905522",
+  "analysis_results": [],
+  "workflow_result": {
+    "status": "error",
+    "message": "Hotel Intelligence analizi başarısız",
+    "hotel_result": {
+      "status": "error",
+      "message": "Teklif oluşturulurken hata oluştu: (psycopg2.errors.UndefinedTable) relation \"vector_chunks\" does not exist\nLINE 2: FROM vector_chunks\n             ^\n\n[SQL: SELECT vector_chunks.id AS vector_chunks_id, vector_chunks.document_id AS vector_chunks_document_id, vector_chunks.chunk AS vector_chunks_chunk, vector_chunks.embedding AS vector_chunks_embedding, vector_chunks.chunk_type AS vector_chunks_chunk_type, vector_chunks.page_number AS vector_chunks_page_number, vector_chunks.created_at AS vector_chunks_created_at \nFROM vector_chunks]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+      "result": {
+        "status": "error",
+        "result": null,
+        "message": "Teklif oluşturulurken hata oluştu: (psycopg2.errors.UndefinedTable) relation \"vector_chunks\" does not exist\nLINE 2: FROM vector_chunks\n             ^\n\n[SQL: SELECT vector_chunks.id AS vector_chunks_id, vector_chunks.document_id AS vector_chunks_document_id, vector_chunks.chunk AS vector_chunks_chunk, vector_chunks.embedding AS vector_chunks_embedding, vector_chunks.chunk_type AS vector_chunks_chunk_type, vector_chunks.page_number AS vector_chunks_page_number, vector_chunks.created_at AS vector_chunks_created_at \nFROM vector_chunks]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+        "sources": null
+      }
+    }
+  },
+  "summary": {
+    "total_analyses": 0,
+    "total_sources": 0,
+    "total_length": 0,
+    "confidence": 0
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "overall_status": "WARN",
+  "passed": 5,
+  "warned": 2,
+  "failed": 2,
+  "total_duration": 9.644764,
+  "test_results": [
+    {
+      "test_name": "Environment Variables",
+      "status": "WARN",
+      "message": "Missing: ['POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD']",
+      "duration": 0.0009999275207519531,
+      "timestamp": "2025-10-18T17:49:03.073770"
+    },
+    {
+      "test_name": "Database Connection",
+      "status": "FAIL",
+      "message": "Error: cannot import name 'execute_query' from 'check_database' (D:\\ZgrSam\\check_database.py)",
+      "duration": 0.002000093460083008,
+      "timestamp": "2025-10-18T17:49:03.075770"
+    },
+    {
+      "test_name": "SAM API Connection",
+      "status": "WARN",
+      "message": "SAM API returned no data",
+      "duration": 4.599413156509399,
+      "timestamp": "2025-10-18T17:49:07.675184"
+    },
+    {
+      "test_name": "Agent Log System",
+      "status": "PASS",
+      "message": "Log system working: 4 recent actions",
+      "duration": 0.0,
+      "timestamp": "2025-10-18T17:49:07.675184"
+    },
+    {
+      "test_name": "Rate Limiting",
+      "status": "PASS",
+      "message": "Backoff sleep working: 0.23s",
+      "duration": 0.2335677146911621,
+      "timestamp": "2025-10-18T17:49:07.908751"
+    },
+    {
+      "test_name": "Duplicate Guard",
+      "status": "PASS",
+      "message": "Duplicate detection working",
+      "duration": 0.0,
+      "timestamp": "2025-10-18T17:49:07.908751"
+    },
+    {
+      "test_name": "Security Mask",
+      "status": "FAIL",
+      "message": "Sensitive data not properly masked",
+      "duration": 0.0015163421630859375,
+      "timestamp": "2025-10-18T17:49:07.910268"
+    },
+    {
+      "test_name": "SOW Workflow",
+      "status": "PASS",
+      "message": "Workflow completed: success",
+      "duration": 0.8891503810882568,
+      "timestamp": "2025-10-18T17:49:08.799418"
+    },
+    {
+      "test_name": "Load Performance",
+      "status": "PASS",
+      "message": "Average processing time: 0.78s",
+      "duration": 3.918116569519043,
+      "timestamp": "2025-10-18T17:49:12.717534"
+    }
+  ]
+}

@@ -1,5 +1,17 @@
-import openpyxl
-import pandas as pd
+try:
+    import openpyxl
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    OPENPYXL_AVAILABLE = False
+    openpyxl = None
+
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    pd = None
+
 from typing import List, Dict, Any
 import logging
 
@@ -8,6 +20,10 @@ logger = logging.getLogger(__name__)
 
 def read_excel_file(file_path: str) -> Dict[str, Any]:
     """Read Excel file and return data"""
+    if not PANDAS_AVAILABLE:
+        logger.warning("pandas not available. Excel reading skipped.")
+        return {}
+    
     try:
         # Read all sheets
         excel_data = pd.read_excel(file_path, sheet_name=None)
@@ -25,6 +41,10 @@ def read_excel_file(file_path: str) -> Dict[str, Any]:
 
 def extract_pricing_data(file_path: str) -> List[Dict[str, Any]]:
     """Extract pricing data from Excel file"""
+    if not OPENPYXL_AVAILABLE:
+        logger.warning("openpyxl not available. Excel pricing extraction skipped.")
+        return []
+    
     try:
         # Read the Excel file
         wb = openpyxl.load_workbook(file_path)
@@ -73,6 +93,16 @@ def process_excel(document_id: int, file_path: str):
         "pricing_items_count": len(pricing_data),
         "pricing_data": pricing_data
     }
+
+
+
+
+
+
+
+
+
+
 
 
 

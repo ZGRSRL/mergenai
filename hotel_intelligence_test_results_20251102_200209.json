@@ -1,0 +1,52 @@
+{
+  "timestamp": "2025-11-02T20:02:09.455135",
+  "total_tests": 7,
+  "passed": 1,
+  "failed": 6,
+  "success_rate": 14.285714285714285,
+  "total_duration": 18.86917018890381,
+  "results": [
+    {
+      "name": "ZgrProp Connectivity",
+      "passed": false,
+      "duration": 2.707411766052246,
+      "details": "Connection failed: ZgrProp RAG API'ye bağlanılamadı: http://rag_api:8000"
+    },
+    {
+      "name": "Health Endpoint",
+      "passed": false,
+      "duration": 2.697413921356201,
+      "details": "Health endpoint not responding"
+    },
+    {
+      "name": "Hybrid Search",
+      "passed": true,
+      "duration": 2.6938862800598145,
+      "details": "Found 0 results"
+    },
+    {
+      "name": "Proposal Generation",
+      "passed": false,
+      "duration": 2.6843903064727783,
+      "details": "Generation failed: ZgrProp RAG API'ye bağlanılamadı: http://rag_api:8000"
+    },
+    {
+      "name": "Hotel Intelligence Bridge",
+      "passed": false,
+      "duration": 2.6968541145324707,
+      "details": "Bridge failed: ZgrProp RAG API'ye bağlanılamadı: http://rag_api:8000"
+    },
+    {
+      "name": "Enhanced SOW Workflow",
+      "passed": false,
+      "duration": 2.7000315189361572,
+      "details": "Workflow failed: Hotel Intelligence analizi başarısız"
+    },
+    {
+      "name": "End-to-End Integration",
+      "passed": false,
+      "duration": 2.688678026199341,
+      "details": "Integration failed: ZgrProp RAG API'ye bağlanılamadı: http://rag_api:8000"
+    }
+  ]
+}

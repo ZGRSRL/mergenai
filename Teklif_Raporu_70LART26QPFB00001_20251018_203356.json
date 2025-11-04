@@ -1,0 +1,119 @@
+{
+  "notice_id": "70LART26QPFB00001",
+  "generated_at": "2025-10-18T20:33:56.751998",
+  "sow_analysis": {
+    "period_of_performance": "2025-02-25 to 2025-02-27",
+    "room_requirements": {
+      "nights": 4,
+      "attrition_policy": "no_penalty_below_120",
+      "total_rooms_per_night": 120
+    },
+    "capacity_requirements": {
+      "breakout_rooms": {
+        "count": 4,
+        "setup": "classroom",
+        "capacity_each": 30
+      },
+      "general_session": {
+        "setup": "classroom",
+        "screens": "6x10",
+        "capacity": 120,
+        "projectors": 2
+      }
+    },
+    "av_requirements": {
+      "adapters": [
+        "HDMI",
+        "DisplayPort",
+        "DVI",
+        "VGA"
+      ],
+      "power_strips_min": 10,
+      "projector_lumens": 5000
+    },
+    "location": {},
+    "assumptions": []
+  },
+  "knowledge_facts": {
+    "compliance_requirements": {},
+    "rationales": [],
+    "citations": []
+  },
+  "hotel_recommendations": {
+    "total_found": 0,
+    "top_recommendations": [],
+    "selection_criteria": "Distance, match score, contact information availability"
+  },
+  "budget_analysis": {
+    "total_estimated_cost": 0,
+    "breakdown": {},
+    "assumptions": {}
+  },
+  "compliance_matrix": {
+    "overall_score": 0,
+    "requirements_coverage": {},
+    "gaps": [
+      {
+        "requirement": "General session capacity: 120",
+        "category": "Capacity",
+        "priority": "high",
+        "gap_type": "missing",
+        "recommendation": "Add section covering General session capacity: 120"
+      },
+      {
+        "requirement": "Breakout rooms: 4",
+        "category": "Rooms",
+        "priority": "high",
+        "gap_type": "missing",
+        "recommendation": "Add section covering Breakout rooms: 4"
+      },
+      {
+        "requirement": "Rooms per night: 120",
+        "category": "Accommodation",
+        "priority": "high",
+        "gap_type": "missing",
+        "recommendation": "Add section covering Rooms per night: 120"
+      },
+      {
+        "requirement": "Projector lumens: 5000",
+        "category": "AV Equipment",
+        "priority": "medium",
+        "gap_type": "missing",
+        "recommendation": "Add section covering Projector lumens: 5000"
+      },
+      {
+        "requirement": "Tax exemption compliance",
+        "category": "Legal",
+        "priority": "high",
+        "gap_type": "missing",
+        "recommendation": "Add section covering Tax exemption compliance"
+      }
+    ]
+  },
+  "proposal_recommendations": {
+    "critical_requirements": [
+      "Minimum 120 oda/gece - Bu kritik gereksinim, daha az oda ile teklif verilemez",
+      "Genel oturum kapasitesi 120 kişi - Venue bu kapasiteyi karşılamalı",
+      "Projektör minimum 5000 lumen - Aydınlık ortamlar için kritik"
+    ],
+    "pricing_strategy": [
+      "Temel teklif fiyatı: $0.00",
+      "Rekabetçi fiyat (önerilen): $0.00 (%5 indirim)",
+      "Premium fiyat (kalite vurgusu): $0.00 (%10 prim)",
+      "Fiyatlandırma faktörleri:",
+      "- Oda kalitesi ve konumu",
+      "- A/V ekipman kalitesi",
+      "- Catering kalitesi",
+      "- Ek hizmetler (transfer, 24/7 destek)"
+    ],
+    "risk_factors": [
+      "Kapasite riski: 120 kişilik büyük grup, uygun venue bulma zorluğu"
+    ],
+    "competitive_advantages": [
+      "24/7 destek hizmeti",
+      "Esnek iptal politikası",
+      "Ücretsiz transfer hizmeti",
+      "Profesyonel A/V ekipman"
+    ]
+  }
+}

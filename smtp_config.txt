@@ -1,0 +1,19 @@
+
+# SMTP Mail Konfigürasyonu
+# Gmail için SMTP ayarları
+
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_EMAIL=your_email@gmail.com
+SMTP_PASSWORD=your_app_password_here
+
+# Alternatif SMTP sunucuları:
+# Outlook: smtp-mail.outlook.com:587
+# Yahoo: smtp.mail.yahoo.com:587
+# Custom: your_smtp_server.com:587
+
+# Gmail App Password oluşturma:
+# 1. Google hesabınıza giriş yapın
+# 2. Security > 2-Step Verification > App passwords
+# 3. "Mail" seçin ve password oluşturun
+# 4. Bu password'u SMTP_PASSWORD olarak kullanın

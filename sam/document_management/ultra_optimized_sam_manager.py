@@ -55,10 +55,10 @@ class UltraOptimizedSAMManager:
         """Veritabanına bağlan"""
         try:
             self.db_conn = psycopg2.connect(
-                host='localhost',
-                database='sam',
-                user='postgres',
-                password='postgres'
+                host=os.getenv('DB_HOST', 'localhost'),
+                database=os.getenv('DB_NAME', 'sam'),
+                user=os.getenv('DB_USER', 'postgres'),
+                password=os.getenv('DB_PASSWORD', 'postgres')
             )
             logger.info("Database connected")
         except Exception as e:
@@ -323,7 +323,7 @@ class UltraOptimizedSAMManager:
         # Son güncelleme zamanını kontrol et
         last_update = self._get_last_update_time()
         
-        if last_update and (datetime.now() - last_update).hours < 6:
+        if last_update and ((datetime.now() - last_update).total_seconds() / 3600) < 6:
             logger.info("Son güncelleme 6 saatten az, atlanıyor")
             return FetchResult(success=True, total_fetched=0, total_stored=0)
         

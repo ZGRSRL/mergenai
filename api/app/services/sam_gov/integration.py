@@ -259,6 +259,16 @@ SAM_GOV_CONFIGS = {
         "keywords": ["audio visual", "av equipment", "conference technology"],
         "naics_codes": ["561110", "541512"],
         "opportunity_types": ["rfq", "sources_sought"]
+    },
+    "hotel": {
+        "keywords": ["hotel", "accommodation", "lodging", "hospitality", "conference center", "resort"],
+        "naics_codes": ["721110"],  # Hotels (except Casino Hotels) and Motels
+        "opportunity_types": ["rfq", "sources_sought"]
+    },
+    "it_services": {
+        "keywords": ["information technology", "IT services", "software development", "cybersecurity", "cloud computing"],
+        "naics_codes": ["541511", "541512", "541519"],  # Custom Computer Programming, Computer Systems Design, Other Computer Related Services
+        "opportunity_types": ["rfq", "rfi", "sources_sought"]
     }
 }
 

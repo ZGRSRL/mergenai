@@ -1,9 +1,16 @@
 import pdfplumber
-import camelot
 from typing import List, Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Camelot is optional - only needed for table extraction
+try:
+    import camelot
+    CAMELOT_AVAILABLE = True
+except ImportError:
+    CAMELOT_AVAILABLE = False
+    logger.warning("camelot-py not available. Table extraction from PDFs will be disabled.")
 
 
 def extract_text_from_pdf(file_path: str) -> str:
@@ -23,6 +30,10 @@ def extract_text_from_pdf(file_path: str) -> str:
 
 def extract_tables_from_pdf(file_path: str) -> List[Dict[str, Any]]:
     """Extract tables from PDF file using Camelot"""
+    if not CAMELOT_AVAILABLE:
+        logger.warning("camelot-py not available. Table extraction skipped.")
+        return []
+    
     try:
         tables = camelot.read_pdf(file_path, pages='all')
         extracted_tables = []
@@ -86,6 +97,16 @@ def process_pdf(document_id: int, file_path: str, document_type: str):
         "tables_count": len(tables),
         "metadata": metadata
     }
+
+
+
+
+
+
+
+
+
+
 
 
 

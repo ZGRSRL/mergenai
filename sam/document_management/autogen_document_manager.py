@@ -305,10 +305,10 @@ class DocumentDatabaseManager:
         """Veritabanına bağlan"""
         try:
             self.db_conn = psycopg2.connect(
-                host='localhost',
-                database='sam',
-                user='postgres',
-                password='postgres'
+                host=os.getenv('DB_HOST', 'localhost'),
+                database=os.getenv('DB_NAME', 'sam'),
+                user=os.getenv('DB_USER', 'postgres'),
+                password=os.getenv('DB_PASSWORD', 'postgres')
             )
             logger.info("Document database connected")
         except Exception as e:

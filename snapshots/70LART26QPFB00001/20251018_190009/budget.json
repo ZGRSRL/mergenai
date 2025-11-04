@@ -1,0 +1,26 @@
+{
+  "accommodation": 14400.0,
+  "av_equipment": 600.0,
+  "catering": 16200.0,
+  "meeting_rooms": 800.0,
+  "setup": 1000.0,
+  "subtotal": 33000.0,
+  "tax": 2640.0,
+  "total": 35640.0,
+  "parameters": {
+    "rooms_per_night": 120,
+    "total_nights": 1,
+    "capacity": 120,
+    "breakout_rooms": 4,
+    "duration_days": 1
+  },
+  "pricing_rates": {
+    "hotel_room_per_night": 120.0,
+    "av_equipment_daily": 500.0,
+    "catering_per_person": 45.0,
+    "meeting_room_daily": 200.0,
+    "setup_fee": 1000.0,
+    "tax_rate": 0.08
+  },
+  "estimation_date": "2025-10-18T19:00:09.950252"
+}

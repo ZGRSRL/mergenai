@@ -161,3 +161,17 @@ def process_rfq_document(text: str) -> Dict[str, Any]:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
