@@ -126,7 +126,7 @@ def get_platform_stats() -> Dict[str, Any]:
 @st.cache_data(ttl=3600)
 def fetch_opportunity_title(notice_id: str) -> Optional[str]:
     """
-    Notice ID'den başlığı getir - Her iki tabloyu da kontrol eder
+    Notice ID'den başlığı getir - Veritabanı ve SAM API'den kontrol eder
     
     Args:
         notice_id: SAM.gov Notice ID
@@ -137,12 +137,12 @@ def fetch_opportunity_title(notice_id: str) -> Optional[str]:
     if not notice_id or not notice_id.strip():
         return None
     
+    # ADIM 1: Veritabanından ara (hotel_opportunities_new)
     try:
         import psycopg2
         conn = psycopg2.connect(DB_DSN)
         cur = conn.cursor()
         
-        # Önce hotel_opportunities_new'de ara
         try:
             cur.execute("""
                 SELECT title FROM hotel_opportunities_new 
@@ -156,7 +156,7 @@ def fetch_opportunity_title(notice_id: str) -> Optional[str]:
         except Exception:
             pass
         
-        # Sonra opportunities tablosunda ara
+        # ADIM 2: Veritabanından ara (opportunities)
         try:
             cur.execute("""
                 SELECT title FROM opportunities 
@@ -171,10 +171,113 @@ def fetch_opportunity_title(notice_id: str) -> Optional[str]:
             pass
         
         conn.close()
-        return None
-        
     except Exception:
-        return None
+        pass
+    
+    # ADIM 3: SAM API'den çek (fallback) - Yeni ilanlar için
+    try:
+        from sam_api_client import SAMAPIClient
+        
+        # API key'i doğru şekilde al
+        api_key = os.getenv('SAM_API_KEY') or os.getenv('SAM_PUBLIC_API_KEY')
+        if api_key:
+            sam_client = SAMAPIClient(public_api_key=api_key, mode="public")
+        else:
+            sam_client = SAMAPIClient(mode="auto")
+        
+        # Önce direkt Notice ID ile dene
+        opportunity = sam_client.get_opportunity_details(notice_id)
+        
+        # Eğer bulunamazsa ve Notice ID kısa format (örn: W50S6U26QA010) ise,
+        # UUID formatına çevirmeyi deneyebiliriz, ama şimdilik sadece direkt aramayı yapıyoruz
+        if not opportunity and len(notice_id) < 32:
+            # Kısa format Notice ID - API'den geniş arama yap
+            try:
+                from datetime import datetime, timedelta
+                today = datetime.now()
+                posted_from = (today - timedelta(days=30)).strftime('%m/%d/%Y')
+                posted_to = today.strftime('%m/%d/%Y')
+                
+                result = sam_client.search_opportunities(
+                    posted_from=posted_from,
+                    posted_to=posted_to,
+                    limit=500
+                )
+                
+                opportunities = result.get('opportunitiesData', [])
+                for opp in opportunities:
+                    opp_notice_id = str(opp.get('noticeId', '') or '')
+                    opp_solicitation = str(opp.get('solicitationNumber', '') or '')
+                    
+                    if notice_id in opp_notice_id or notice_id in opp_solicitation:
+                        opportunity = opp
+                        break
+            except Exception:
+                pass
+        
+        if opportunity:
+            # API response farklı formatlarda gelebilir
+            title = opportunity.get('title') or opportunity.get('Title') or opportunity.get('opportunityTitle')
+            if title:
+                return title
+    except Exception as e:
+        # API hatası sessizce geçilir, kullanıcıya bilgi mesajı gösterilir
+        pass
+    
+    return None
+
+@st.cache_data(ttl=3600)  # 1 saat cache
+def fetch_daily_opportunities():
+    """SAM API'den bugün yayınlanan ilanları çek - Sadece Hotel sektörü (NAICS 721110)"""
+    try:
+        from sam_api_client import SAMAPIClient
+        from datetime import datetime
+        
+        # API key'i al
+        api_key = os.getenv('SAM_API_KEY') or os.getenv('SAM_PUBLIC_API_KEY')
+        if not api_key:
+            return {'error': 'SAM_API_KEY bulunamadı', 'opportunities': []}
+        
+        # Bugünün tarihi
+        today = datetime.now()
+        posted_from = today.strftime('%m/%d/%Y')
+        posted_to = today.strftime('%m/%d/%Y')
+        
+        # SAM API client
+        sam_client = SAMAPIClient(public_api_key=api_key, mode="public")
+        
+        # Bugünkü ilanları çek - Hotel sektörü için NAICS 721110 filtrele
+        result = sam_client.search_opportunities(
+            posted_from=posted_from,
+            posted_to=posted_to,
+            limit=100,  # Daha fazla çek, sonra filtrele
+            naicsCode='721110'  # Hotels (except casino hotels) and motels
+        )
+        
+        opportunities = result.get('opportunitiesData', [])
+        
+        # Ek filtreleme: NAICS 721110 içerenleri kontrol et (API bazen tam eşleşme yapmıyor)
+        hotel_opportunities = []
+        for opp in opportunities:
+            naics_code = str(opp.get('naicsCode', '') or '')
+            # NAICS 721110 ile ilgili olanları al (tam eşleşme veya içeriyor mu kontrol et)
+            if '721110' in naics_code or naics_code == '721110':
+                hotel_opportunities.append(opp)
+        
+        return {
+            'success': True,
+            'opportunities': hotel_opportunities,
+            'count': len(hotel_opportunities),
+            'date': today.strftime('%Y-%m-%d')
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'opportunities': [],
+            'count': 0
+        }
 
 @st.cache_resource
 def get_rag_client():
@@ -414,39 +517,254 @@ if menu == "🏆 Ana Sayfa":
         - AutoGen ile teklif taslağı
         - Stratejik destek ve analiz
         """)
+    
+    st.markdown("---")
+    
+    # Günlük İlanlar Akışı
+    st.subheader("📰 Günlük İlanlar Akışı")
+    st.caption("Bugün SAM.gov'da yayınlanan yeni ilanlar - Sadece Hotel Sektörü (NAICS 721110)")
+    
+    # Günlük ilanları getir
+    with st.spinner("Günlük ilanlar yükleniyor..."):
+        daily_data = fetch_daily_opportunities()
+    
+    if daily_data.get('success'):
+        opportunities = daily_data.get('opportunities', [])
+        count = daily_data.get('count', 0)
+        
+        if count > 0:
+            st.success(f"✅ Bugün **{count}** yeni ilan bulundu ({daily_data.get('date', 'N/A')})")
+            
+            # Filtreleme seçenekleri
+            col_filter1, col_filter2, col_filter3 = st.columns(3)
+            
+            with col_filter1:
+                filter_keyword = st.text_input("🔍 Anahtar Kelime Filtre", "", key="daily_filter_keyword")
+            
+            with col_filter2:
+                filter_agency = st.text_input("🏛️ Kurum Filtre", "", key="daily_filter_agency")
+            
+            with col_filter3:
+                filter_naics = st.text_input("📊 NAICS Filtre", "", key="daily_filter_naics")
+            
+            # Filtreleme
+            filtered_opps = opportunities
+            if filter_keyword:
+                filtered_opps = [opp for opp in filtered_opps if filter_keyword.lower() in str(opp.get('title', '')).lower() or filter_keyword.lower() in str(opp.get('description', '')).lower()]
+            if filter_agency:
+                filtered_opps = [opp for opp in filtered_opps if filter_agency.lower() in str(opp.get('department', '')).lower() or filter_agency.lower() in str(opp.get('fullParentPathName', '')).lower()]
+            if filter_naics:
+                filtered_opps = [opp for opp in filtered_opps if filter_naics in str(opp.get('naicsCode', ''))]
+            
+            st.info(f"📋 Filtrelenmiş sonuç: **{len(filtered_opps)}** ilan")
+            
+            # İlanları akış formatında göster
+            for idx, opp in enumerate(filtered_opps[:20], 1):  # İlk 20 ilan
+                notice_id = opp.get('noticeId', opp.get('notice_id', 'N/A'))
+                title = opp.get('title', 'Başlık Yok')
+                agency = opp.get('department', opp.get('fullParentPathName', 'N/A'))
+                posted_date = opp.get('postedDate', opp.get('posted_date', 'N/A'))
+                naics_code = opp.get('naicsCode', opp.get('naics_code', 'N/A'))
+                description = opp.get('description', '')[:200] + "..." if len(str(opp.get('description', ''))) > 200 else opp.get('description', '')
+                
+                # İlan kartı
+                st.markdown("---")  # Border yerine separator
+                with st.container():
+                    col_left, col_right = st.columns([4, 1])
+                    
+                    with col_left:
+                        st.markdown(f"### [{idx}] {title}")
+                        st.caption(f"📅 {posted_date} | 🏛️ {agency} | 📊 NAICS: {naics_code}")
+                        
+                        if description:
+                            st.write(description)
+                        
+                        # Butonlar
+                        col_btn1, col_btn2, col_btn3 = st.columns(3)
+                        with col_btn1:
+                            if st.button("🔍 Analiz Et", key=f"analyze_daily_{notice_id}_{idx}", use_container_width=True):
+                                st.session_state["selected_notice"] = notice_id
+                                st.session_state[f'title_{notice_id}'] = title
+                                st.success(f"✅ {notice_id} seçildi - İlan Analizi sekmesine geçin")
+                        
+                        with col_btn2:
+                            sam_url = f"https://sam.gov/workspace/contract/opp/{notice_id}/view"
+                            st.markdown(f'<a href="{sam_url}" target="_blank"><button style="width:100%">🌐 SAM.gov\'da Aç</button></a>', unsafe_allow_html=True)
+                        
+                        with col_btn3:
+                            if st.button("📋 Detay", key=f"detail_daily_{notice_id}_{idx}", use_container_width=True):
+                                st.session_state[f"show_detail_{notice_id}"] = not st.session_state.get(f"show_detail_{notice_id}", False)
+                    
+                    with col_right:
+                        st.markdown(f"**Notice ID:**")
+                        st.code(notice_id[:20] + "..." if len(notice_id) > 20 else notice_id, language=None)
+                        
+                        # Hızlı metrikler
+                        if opp.get('responseDeadLine'):
+                            st.caption(f"⏰ Son Tarih: {opp.get('responseDeadLine')}")
+                    
+                    # Detay gösterimi
+                    if st.session_state.get(f"show_detail_{notice_id}", False):
+                        with st.expander(f"📋 Tam Detay: {notice_id}", expanded=True):
+                            st.json(opp)
+            
+            if len(filtered_opps) > 20:
+                st.info(f"💡 Toplam {len(filtered_opps)} ilan bulundu. İlk 20 ilan gösteriliyor.")
+            
+            # Yenile butonu
+            if st.button("🔄 Günlük İlanları Yenile", use_container_width=True):
+                st.cache_data.clear()
+                st.rerun()
+        
+        else:
+            st.info("ℹ️ Bugün henüz yeni ilan yayınlanmamış veya filtre kriterlerinize uygun ilan bulunamadı.")
+            if st.button("🔄 Tekrar Dene", use_container_width=True):
+                st.cache_data.clear()
+                st.rerun()
+    
+    else:
+        error_msg = daily_data.get('error', 'Bilinmeyen hata')
+        st.warning(f"⚠️ Günlük ilanlar yüklenemedi: {error_msg}")
+        
+        if "SAM_API_KEY" in error_msg or "API" in error_msg:
+            st.info("💡 Lütfen .env dosyasında SAM_API_KEY veya SAM_PUBLIC_API_KEY'in doğru ayarlandığından emin olun.")
+        
+        if st.button("🔄 Tekrar Dene", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
 
 # 2. İlan Analizi
 elif menu == "🔍 İlan Analizi":
     st.markdown('<div class="main-header">🔍 Canlı İlan Analizi</div>', unsafe_allow_html=True)
     st.markdown("### SAM.gov İlanlarını Analiz Et ve RAG Sistemine Hazırla")
     
+    # Notice ID Search Section
+    st.markdown("### 🔍 Notice ID / Solicitation Number Arama")
+    
+    search_tab1, search_tab2 = st.tabs(["📝 Direkt Giriş", "🔎 API Arama"])
+    
+    with search_tab1:
+        # Direct input
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            notice_id = st.text_input(
+                "SAM.gov Notice ID veya Solicitation Number",
+                value=st.session_state.get("selected_notice", "086008536ec84226ad9de043dc738d06"),
+                help="UUID format: 086008536ec84226ad9de043738d06 veya Public format: W50S6U26QA010",
+                key="notice_id_input"
+            )
+            
+            # Başlığı getir ve göster
+            if notice_id and notice_id.strip():
+                opportunity_title = fetch_opportunity_title(notice_id)
+                if opportunity_title:
+                    st.markdown(f"**📋 İlan Başlığı:** {opportunity_title}")
+                    st.session_state[f'title_{notice_id}'] = opportunity_title
+                else:
+                    st.info("ℹ️ Başlık bulunamadı - Veritabanında ve SAM API'de arama yapıldı. Bu yeni bir ilan olabilir veya API erişimi sınırlı olabilir.")
+        
+        with col2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            analyze_button = st.button("🚀 İlanı Analiz Et", type="primary", use_container_width=True)
+    
+    with search_tab2:
+        # API Search
+        st.markdown("**SAM.gov API ile Geniş Arama**")
+        
+        col_search1, col_search2, col_search3 = st.columns([2, 1, 1])
+        
+        with col_search1:
+            search_term = st.text_input(
+                "Arama Terimi (Notice ID, Solicitation Number, veya Anahtar Kelime)",
+                placeholder="W50S6U26QA010 veya hotel services",
+                key="api_search_term"
+            )
+        
+        with col_search2:
+            search_days = st.number_input("Son N Gün", min_value=1, max_value=365, value=30, key="search_days")
+        
+        with col_search3:
+            st.markdown("<br>", unsafe_allow_html=True)
+            search_button = st.button("🔍 Ara", type="primary", use_container_width=True)
+        
+        if search_button and search_term:
+            with st.spinner("SAM.gov API'de aranıyor..."):
+                try:
+                    from sam_api_client import SAMAPIClient
+                    from datetime import datetime, timedelta
+                    
+                    api_key = os.getenv('SAM_API_KEY') or os.getenv('SAM_PUBLIC_API_KEY')
+                    sam_client = SAMAPIClient(public_api_key=api_key, mode="public")
+                    
+                    today = datetime.now()
+                    posted_from = (today - timedelta(days=search_days)).strftime('%m/%d/%Y')
+                    posted_to = today.strftime('%m/%d/%Y')
+                    
+                    # OPTIMIZE: Manuel arama için küçük limit
+                    result = sam_client.search_opportunities(
+                        posted_from=posted_from,
+                        posted_to=posted_to,
+                        limit=50,  # 100'den 50'ye düşürüldü
+                        naicsCode='721110'
+                    )
+                    
+                    opportunities = result.get('opportunitiesData', [])
+                    
+                    # Filter by search term
+                    filtered_opps = []
+                    search_lower = search_term.lower()
+                    for opp in opportunities:
+                        title = str(opp.get('title', '')).lower()
+                        notice_id_val = str(opp.get('noticeId', '')).lower()
+                        solicitation = str(opp.get('solicitationNumber', '')).lower()
+                        description = str(opp.get('description', '')).lower()
+                        
+                        if (search_lower in title or 
+                            search_lower in notice_id_val or 
+                            search_lower in solicitation or
+                            search_lower in description):
+                            filtered_opps.append(opp)
+                    
+                    if filtered_opps:
+                        st.success(f"✅ {len(filtered_opps)} fırsat bulundu")
+                        
+                        for idx, opp in enumerate(filtered_opps[:20], 1):
+                            opp_notice_id = opp.get('noticeId', 'N/A')
+                            opp_title = opp.get('title', 'N/A')
+                            opp_date = opp.get('postedDate', 'N/A')
+                            
+                            with st.expander(f"[{idx}] {opp_title[:60]}...", expanded=False):
+                                col_opp1, col_opp2 = st.columns([3, 1])
+                                
+                                with col_opp1:
+                                    st.markdown(f"**Notice ID:** `{opp_notice_id}`")
+                                    st.markdown(f"**Posted Date:** {opp_date}")
+                                    st.markdown(f"**NAICS:** {opp.get('naicsCode', 'N/A')}")
+                                    st.markdown(f"**Agency:** {opp.get('department', 'N/A')}")
+                                
+                                with col_opp2:
+                                    if st.button("📋 Seç ve Analiz Et", key=f"select_opp_{idx}", use_container_width=True):
+                                        st.session_state["selected_notice"] = opp_notice_id
+                                        st.session_state[f'title_{opp_notice_id}'] = opp_title
+                                        st.success(f"✅ {opp_notice_id} seçildi! Yukarıdaki 'Direkt Giriş' sekmesine geçin.")
+                                        st.rerun()
+                    else:
+                        st.warning(f"⚠️ '{search_term}' için sonuç bulunamadı.")
+                        st.info("💡 İpucu: Notice ID (UUID veya Public format), Solicitation Number veya anahtar kelime ile arayabilirsiniz.")
+                
+                except Exception as e:
+                    st.error(f"❌ Arama hatası: {e}")
+                    import traceback
+                    st.code(traceback.format_exc())
+    
     # Settings
     with st.expander("⚙️ Ayarlar"):
         use_llm = st.checkbox("LLM ile Gereksinim Çıkarımı", value=True)
         download_dir = st.text_input("Download Dizini", value="./downloads")
     
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        notice_id = st.text_input(
-            "SAM.gov Notice ID",
-            value="086008536ec84226ad9de043dc738d06",
-            help="Örnek: 086008536ec84226ad9de043dc738d06",
-            key="notice_id_input"
-        )
-        
-        # Başlığı getir ve göster
-        if notice_id and notice_id.strip():
-            opportunity_title = fetch_opportunity_title(notice_id)
-            if opportunity_title:
-                st.markdown(f"**📋 İlan Başlığı:** {opportunity_title}")
-                st.session_state[f'title_{notice_id}'] = opportunity_title
-            else:
-                st.info("ℹ️ Başlık bulunamadı - Bu yeni bir ilan olabilir")
-    
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        analyze_button = st.button("🚀 İlanı Analiz Et", type="primary", use_container_width=True)
+    # Get notice_id from session state or input (for workflow execution)
+    notice_id_for_analysis = st.session_state.get("selected_notice") or st.session_state.get("notice_id_input", "")
     
     if analyze_button and notice_id:
         with st.spinner("İlan analizi yapılıyor... Bu işlem birkaç dakika sürebilir."):
@@ -464,7 +782,8 @@ elif menu == "🔍 İlan Analizi":
                 status_text.info("Workflow başlatılıyor...")
                 progress_bar.progress(10)
                 
-                result = workflow.run(notice_id)
+                # Use the notice_id from the input field
+                result = workflow.run(notice_id.strip())
                 
                 progress_bar.progress(100)
                 status_text.empty()
@@ -596,7 +915,7 @@ elif menu == "📊 SOW Analizi (LLM Teklif)":
                 st.markdown(f"**📋 İlan Başlığı:** {opportunity_title}")
                 st.session_state[f'title_{rag_notice_id}'] = opportunity_title
             else:
-                st.info("ℹ️ Başlık bulunamadı - Bu yeni bir ilan olabilir")
+                st.info("ℹ️ Başlık bulunamadı - Veritabanında ve SAM API'de arama yapıldı. Bu yeni bir ilan olabilir veya API erişimi sınırlı olabilir.")
         
         rag_query = st.text_area(
             "Soru/Talimat (LLM'e Gidecek)",

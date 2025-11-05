@@ -38,8 +38,26 @@ class DatabaseManager:
     
     def _get_db_config(self) -> Dict[str, str]:
         """Get database configuration from environment variables"""
+        # Check DB_DSN first (PostgreSQL connection string)
+        db_dsn = os.getenv('DB_DSN', '')
+        if db_dsn:
+            # Parse DSN if it's a full connection string
+            # Format: "dbname=ZGR_AI user=postgres password=xxx host=localhost port=5432"
+            if 'host=' in db_dsn:
+                # Extract host from DSN, but replace 'db' with 'localhost' if needed
+                if 'host=db' in db_dsn or ' host=db ' in db_dsn:
+                    db_dsn = db_dsn.replace('host=db', 'host=localhost').replace(' host=db ', ' host=localhost ')
+                # Return as dict for direct connection
+                return {'dsn': db_dsn}
+        
+        # Fallback to individual environment variables
+        db_host = os.getenv('DB_HOST', 'localhost')
+        # Fix Docker hostname issue
+        if db_host == 'db':
+            db_host = 'localhost'
+        
         return {
-            'host': os.getenv('DB_HOST', 'localhost'),
+            'host': db_host,
             'database': os.getenv('DB_NAME', 'ZGR_AI'),
             'user': os.getenv('DB_USER', 'postgres'),
             'password': os.getenv('DB_PASSWORD', 'postgres'),
@@ -49,11 +67,19 @@ class DatabaseManager:
     def _create_connection_pool(self):
         """Create connection pool"""
         try:
-            self.connection_pool = psycopg2.pool.ThreadedConnectionPool(
-                minconn=1,
-                maxconn=10,
-                **self.db_config
-            )
+            # If DSN is provided, use it directly
+            if 'dsn' in self.db_config:
+                self.connection_pool = psycopg2.pool.ThreadedConnectionPool(
+                    minconn=1,
+                    maxconn=10,
+                    dsn=self.db_config['dsn']
+                )
+            else:
+                self.connection_pool = psycopg2.pool.ThreadedConnectionPool(
+                    minconn=1,
+                    maxconn=10,
+                    **self.db_config
+                )
             logger.info("Database connection pool created successfully")
         except Exception as e:
             logger.error(f"Failed to create connection pool: {e}")
@@ -73,7 +99,10 @@ class DatabaseManager:
                 yield cursor
             else:
                 # Fallback to direct connection
-                connection = psycopg2.connect(**self.db_config)
+                if 'dsn' in self.db_config:
+                    connection = psycopg2.connect(self.db_config['dsn'])
+                else:
+                    connection = psycopg2.connect(**self.db_config)
                 if cursor_factory:
                     cursor = connection.cursor(cursor_factory=cursor_factory)
                 else:

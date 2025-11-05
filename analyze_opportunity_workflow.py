@@ -29,6 +29,13 @@ sys.path.append('./sam/document_management')
 try:
     from sam_api_client import SAMAPIClient
     from sow_analysis_manager import SOWAnalysisManager, SOWAnalysisResult
+    # Requirements manager import
+    try:
+        from requirements_manager import RequirementsManager
+        requirements_manager = RequirementsManager()
+    except ImportError:
+        requirements_manager = None
+        logging.warning("requirements_manager optional - requirements kaydedilemeyecek")
     # download_sam_docs fallback için (API primary, bu fallback)
     try:
         from download_sam_docs import fetch_resource_links, download_attachment
@@ -83,8 +90,10 @@ class OpportunityAnalysisWorkflow:
             use_llm: LLM ile gereksinim çıkarımı yapılsın mı?
         """
         # Initialize SAM API client
+        # Try SAM_API_KEY first, then SAM_PUBLIC_API_KEY
+        api_key = os.getenv('SAM_API_KEY') or os.getenv('SAM_PUBLIC_API_KEY')
         self.sam_client = SAMAPIClient(
-            public_api_key=os.getenv('SAM_PUBLIC_API_KEY'),
+            public_api_key=api_key,
             system_api_key=os.getenv('SAM_SYSTEM_API_KEY'),
             mode="auto"
         )
@@ -230,20 +239,36 @@ class OpportunityAnalysisWorkflow:
             # API tabanlı indirme - sam_api_client kullan
             logger.info(f"API tabanli dokuman indirme basliyor...")
             
-            # Method 1: sam_api_client.get_resource_links + download_all_attachments
+            # Method 1: sam_api_client.get_resource_links + download_all_attachments (GELIŞTIRILMİŞ)
             try:
                 resource_links = self.sam_client.get_resource_links(notice_id)
                 
                 if resource_links:
                     logger.info(f"Resource links API'den bulundu: {len(resource_links)} link")
-                    # sam_api_client ile indirme
-                    downloaded_files = self.sam_client.download_all_attachments(
-                        notice_id, 
-                        str(opp_dir)
-                    )
+                    
+                    # Her resource link için geliştirilmiş indirme
+                    for i, link_data in enumerate(resource_links, 1):
+                        try:
+                            url = link_data.get('url', '') if isinstance(link_data, dict) else str(link_data)
+                            if not url:
+                                continue
+                            
+                            filename = link_data.get('filename', f"attachment_{i}.pdf") if isinstance(link_data, dict) else f"attachment_{i}.pdf"
+                            
+                            logger.info(f"[{i}/{len(resource_links)}] Indiriliyor: {filename}")
+                            file_path = self.sam_client.download_attachment(url, filename, str(opp_dir))
+                            
+                            if file_path and os.path.exists(file_path):
+                                downloaded_files.append(file_path)
+                                logger.info(f"[OK] {filename} indirildi -> {file_path}")
+                            
+                        except Exception as e:
+                            logger.warning(f"Dosya indirme hatasi {i}: {e}")
+                            continue
+                    
                     if downloaded_files:
-                        logger.info(f"[OK] {len(downloaded_files)} dosya indirildi (API)")
-                        return [str(f) for f in downloaded_files]
+                        logger.info(f"[OK] Toplam {len(downloaded_files)} dosya indirildi (API)")
+                        return downloaded_files
                 
             except Exception as e:
                 logger.warning(f"sam_api_client indirme hatasi: {e}, fetch_resource_links deneniyor...")
@@ -256,36 +281,47 @@ class OpportunityAnalysisWorkflow:
                     
                     if not resource_links:
                         logger.warning("Resource links bulunamadi (fetch_resource_links)")
-                        return downloaded_files
-                    
-                    logger.info(f"Resource links bulundu: {len(resource_links)} link")
-                    
-                    # Her resource link için doküman indir
-                    last_call = [0.0]
-                    for i, link_data in enumerate(resource_links[:20], 1):  # İlk 20 doküman
-                        try:
-                            url = link_data.get('url') or link_data.get('link')
-                            if not url:
+                        # Method 3'e geç - Web scraping (sadece API çalışmadığında)
+                        pass
+                    else:
+                        logger.info(f"Resource links bulundu: {len(resource_links)} link")
+                        
+                        # Her resource link için doküman indir
+                        last_call = [0.0]
+                        for i, link_data in enumerate(resource_links[:20], 1):  # İlk 20 doküman
+                            try:
+                                url = link_data.get('url') or link_data.get('link')
+                                if not url:
+                                    continue
+                                
+                                filename = link_data.get('filename') or link_data.get('title') or f"document_{i}.pdf"
+                                base_name = Path(filename).stem
+                                
+                                logger.info(f"[{i}/{len(resource_links)}] Indiriliyor: {filename}")
+                                file_path = download_attachment(url, opp_dir, base_name, last_call)
+                                
+                                if file_path and file_path.exists():
+                                    downloaded_files.append(str(file_path))
+                                    logger.info(f"[OK] {filename} indirildi -> {file_path}")
+                                
+                            except Exception as e:
+                                logger.warning(f"Dosya indirme hatasi {i}: {e}")
                                 continue
-                            
-                            filename = link_data.get('filename') or link_data.get('title') or f"document_{i}.pdf"
-                            base_name = Path(filename).stem
-                            
-                            logger.info(f"[{i}/{len(resource_links)}] Indiriliyor: {filename}")
-                            file_path = download_attachment(url, opp_dir, base_name, last_call)
-                            
-                            if file_path and file_path.exists():
-                                downloaded_files.append(str(file_path))
-                                logger.info(f"[OK] {filename} indirildi -> {file_path}")
-                            
-                        except Exception as e:
-                            logger.warning(f"Dosya indirme hatasi {i}: {e}")
-                            continue
-                            
+                        
+                        if downloaded_files:
+                            return downloaded_files
                 except Exception as e:
                     logger.error(f"fetch_resource_links hatasi: {e}")
-            else:
-                logger.info("fetch_resource_links/download_attachment modulleri yok, sadece API kullanildi")
+            
+            # Method 3: Web scraping fallback (sadece API çalışmadığında)
+            if not downloaded_files:
+                try:
+                    logger.info("Web scraping ile dokuman linkleri araniyor (son fallback)...")
+                    downloaded_files = self._scrape_documents_from_web(notice_id, opp_dir)
+                    if downloaded_files:
+                        logger.info(f"[OK] Web scraping ile {len(downloaded_files)} dosya bulundu")
+                except Exception as e:
+                    logger.warning(f"Web scraping hatasi: {e}")
             
             # İndirilen dosyalardan metin çıkar (opsiyonel)
             if downloaded_files:

@@ -63,3 +63,7 @@ INSERT INTO vector_chunks (document_id, chunk, embedding, chunk_type, page_numbe
 
 
 
+
+
+
+
